@@ -1,0 +1,62 @@
+# [라인센서]검은선을 밟으면 1, 안 밟으면 0
+# [모터부분 변수] ms(모터중지),forward(모터전진),exceed(추월)
+# [카메라부분 변수] green(초록불)-있으면 리턴하기전에 green = 1 코드 필요, human(사람), existCar(차)
+# [초음파센서 변수] Ultrasonic(초음파감지)-리턴하기전에 Ultrasonic = 1 코드 필요
+# [미정사항] 추월case-moter.exceed()으로 임시로 써둠
+import RPi.GPIO as GPIO
+import time
+
+import ultra  #  UltrasonicWave()
+import TCRT5000 as LS # LineSencer()
+import motor  # stop(), Forward(), turn_left(), turn_right()
+import webcam # human()
+
+
+# 1. 초기화 장치검사 기본 
+def init():
+    # 초음파 센서 and 라인 센서 오류검사 
+    if Ultra.distance < 0 and LS.LineSencer() == 0xEE :
+        print('check Sensor')
+    else:
+        print('Sensor_ok')
+        return True
+
+# 2. 주행 프로세스
+# 2-1. 라인인지
+if init() == True:
+    if LS.LineSencer() == 0xEE: # error
+        moter.stop()
+    elif LS.LineSencer() == 0x31 and ultra.UltrasonicWave() == 0: # 정상인 경우
+        moter.Forward()
+        # 주행 중 초음파센서 인지
+        # 5. [3번상황] 사람인지프로그램- 카메라의존도높음
+        if ultra.UltrasonicWave() == 1 and webcam.human() == True: #초음파인지 and 사람인지!!
+            moter.stop()       
+        # 3. [2번상황] 장애물회피프로그램
+        elif ultra.UltrasonicWave() == 1 and webcam.car() == True: #초음파인지 and 차인지!!
+            moter.exceed() # 모터 추월 코드작성이 추가로 필요!!
+        else:
+            moter.Forward()
+    elif LS.LineSencer() == 0x21:  # 오른쪽 선만 밟은 경우
+        moter.turn_left()
+    elif LS.LineSencer() == 0x11 : # 왼쪽 선만 밟은 경우
+        moter.turn_right()
+    elif LS.LineSencer() == 0x41: # 검은선 3개 밟기
+        # 4. [1번상황] 신호등프로그램
+        if webcam.color() == True: # 카메라변수 가정!!
+            if ultra.UltrasonicWave() == 1 and webcam.human() == True: #초음파인지 and 사람인지!!
+                moter.stop()
+            else:
+                moter.Forward()
+        else:
+            moter.stop()
+    else:
+        break:     
+else:
+    break:
+    
+# 6. 주행프로세스
+# 7. end
+
+
+GPIO.cleanup()
